@@ -1,22 +1,12 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'Laravel') }}</title>
+@extends('layouts.app')
 
-    @vite(['resources/js/app.js'])
-</head>
-<body class="d-flex flex-column min-vh-100">
-    @include('partials.header')
+@section('title','Inicio - PROCAFES')
 
-    <main class="container py-4 flex-grow-1">
-        {{ $slot ?? '' }}
-        @yield('content')
-    </main>
-
-    <footer class="bg-dark text-white text-center py-3 mt-auto">
-        <small>&copy; {{ date('Y') }} - Mi Tienda</small>
-    </footer>
-</body>
-</html>
+@section('content')
+<div class="container">
+  <div class="p-4 bg-light rounded">
+    <h1 class="h4 mb-2">Bienvenido a PROCAFES</h1>
+    <p class="mb-0">Tienda de café en Pichanaki ☕</p>
+  </div>
+</div>
+@endsection

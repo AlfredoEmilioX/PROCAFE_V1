@@ -1,71 +1,81 @@
-<?php
+<div class="row g-4 align-items-stretch">
+  {{-- Imagen izquierda (solo ≥ lg) --}}
+  <div class="col-lg-7 d-none d-lg-block">
+    <div class="ratio ratio-4x3 rounded-4 overflow-hidden bg-light">
+      <img
+        src="{{ asset('images/cafe_register.jpg') }}"
+        alt="Autenticación PROCAFES"
+        class="w-100 h-100 object-fit-cover"
+      >
+    </div>
+  </div>
 
-use App\Livewire\Forms\LoginForm;
-use Illuminate\Support\Facades\Session;
-use Livewire\Attributes\Layout;
-use Livewire\Volt\Component;
+  {{-- Form derecha --}}
+  <div class="col-12 col-lg-5">
+    <div class="card shadow-sm h-100 rounded-4 border-0">
+      <div class="card-body p-4 p-lg-5">
+        <h2 class="h4 mb-1">Bienvenido(a) a PROCAFES</h2>
+        <p class="text-muted mb-4">Inicia sesión en tu cuenta</p>
 
-new #[Layout('layouts.guest')] class extends Component
-{
-    public LoginForm $form;
+        @if (session('status'))
+          <div class="alert alert-success" role="alert">{{ session('status') }}</div>
+        @endif
 
-    /**
-     * Handle an incoming authentication request.
-     */
-    public function login(): void
-    {
-        $this->validate();
+        {{-- Muestra error general de credenciales si falla --}}
+        @error('state.email')
+          <div class="alert alert-danger" role="alert">{{ $message }}</div>
+        @enderror
 
-        $this->form->authenticate();
+        <form wire:submit="login" novalidate>
+          <div class="mb-3">
+            <label for="email" class="form-label">Correo electrónico</label>
+            <input id="email" type="email"
+                   wire:model.defer="state.email" required autocomplete="email" autofocus
+                   class="form-control @error('state.email') is-invalid @enderror"
+                   placeholder="tucorreo@dominio.com">
+            @error('state.email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-        Session::regenerate();
+          <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <input id="password" type="password"
+                   wire:model.defer="state.password" required autocomplete="current-password"
+                   class="form-control @error('state.password') is-invalid @enderror"
+                   placeholder="••••••••">
+            @error('state.password') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
-    }
-}; ?>
-
-<div>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
-
-    <form wire:submit="login">
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="form.email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('form.email')" class="mt-2" />
-        </div>
-
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input wire:model="form.password" id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('form.password')" class="mt-2" />
-        </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember" class="inline-flex items-center">
-                <input wire:model="form.remember" id="remember" type="checkbox" class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800" name="remember">
-                <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="remember" wire:model="state.remember">
+              <label class="form-check-label" for="remember">Recordarme</label>
+            </div>
             @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('password.request') }}" wire:navigate>
-                    {{ __('Forgot your password?') }}
-                </a>
+              <a class="link-procafes text-decoration-none" href="{{ route('password.request') }}">
+                ¿Olvidaste tu contraseña?
+              </a>
             @endif
+          </div>
 
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-procafes-dark btn-lg" wire:loading.attr="disabled">
+              Ingresar
+            </button>
+          </div>
+        </form>
+
+        <div class="text-center my-3"><span class="text-muted">o</span></div>
+
+        <a href="{{ route('auth.google.redirect') }}"
+           class="btn btn-light border w-100 d-flex align-items-center justify-content-center gap-2 mb-2">
+          <i class="bi bi-google"></i> Continuar con Google
+        </a>
+
+        <p class="text-center mt-3 mb-0">
+          ¿No tienes cuenta?
+          <a href="{{ route('register') }}" class="link-procafes text-decoration-none">Crear cuenta</a>
+        </p>
+      </div>
+    </div>
+  </div>
 </div>

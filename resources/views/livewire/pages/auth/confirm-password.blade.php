@@ -1,62 +1,73 @@
-<?php
+@php
+    use Livewire\Volt\Component;
+    use Livewire\Attributes\Layout;
+    use Illuminate\Support\Facades\Hash;
 
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
-use Livewire\Attributes\Layout;
-use Livewire\Volt\Component;
-
-new #[Layout('layouts.guest')] class extends Component
-{
-    public string $password = '';
-
-    /**
-     * Confirm the current user's password.
-     */
-    public function confirmPassword(): void
+    new #[Layout('components.layouts.app')] class extends Component
     {
-        $this->validate([
-            'password' => ['required', 'string'],
-        ]);
+        public array $state = ['password' => ''];
 
-        if (! Auth::guard('web')->validate([
-            'email' => Auth::user()->email,
-            'password' => $this->password,
-        ])) {
-            throw ValidationException::withMessages([
-                'password' => __('auth.password'),
-            ]);
+        public function confirm()
+        {
+            $data = validator($this->state, [
+                'password' => ['required'],
+            ])->validate();
+
+            if (! Hash::check($data['password'], auth()->user()->password)) {
+                $this->addError('password', 'La contraseña no coincide.');
+                return;
+            }
+
+            // Marca la confirmación reciente de contraseña (como hace Laravel)
+            session()->put('auth.password_confirmed_at', time());
+
+            // Continúa a la acción protegida o vuelve al dashboard/home
+            redirect()->intended('/')->send();
         }
+    };
+@endphp
 
-        session(['auth.password_confirmed_at' => time()]);
-
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
-    }
-}; ?>
-
-<div>
-    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
+<div class="row g-4 align-items-stretch">
+  {{-- Imagen izquierda --}}
+  <div class="col-lg-7 d-none d-lg-block">
+    <div class="h-100 rounded-3 overflow-hidden">
+      <img src="{{ asset('images/auth-hero.jpg') }}"
+           alt="Confirmar contraseña - PROCAFES"
+           class="w-100 h-100"
+           style="object-fit: cover; min-height: 560px;">
     </div>
+  </div>
 
-    <form wire:submit="confirmPassword">
-        <!-- Password -->
-        <div>
-            <x-input-label for="password" :value="__('Password')" />
+  {{-- Form derecha --}}
+  <div class="col-12 col-lg-5">
+    <div class="card shadow-sm h-100 rounded-4 border-0">
+      <div class="card-body p-4 p-lg-5">
+        <h2 class="h4 mb-1">Confirma tu contraseña</h2>
+        <p class="text-muted mb-4">Por seguridad, vuelve a escribir tu contraseña.</p>
 
-            <x-text-input wire:model="password"
-                          id="password"
-                          class="block mt-1 w-full"
-                          type="password"
-                          name="password"
-                          required autocomplete="current-password" />
+        <form wire:submit="confirm" novalidate>
+          <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <input id="password" type="password"
+                   wire:model.defer="state.password" required autocomplete="current-password"
+                   class="form-control @error('password') is-invalid @enderror"
+                   placeholder="••••••••">
+            @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-procafes-dark btn-lg" wire:loading.attr="disabled">
+              Continuar
+            </button>
+          </div>
+        </form>
 
-        <div class="flex justify-end mt-4">
-            <x-primary-button>
-                {{ __('Confirm') }}
-            </x-primary-button>
-        </div>
-    </form>
+        <p class="text-center mt-3 mb-0">
+          <a href="{{ route('password.request') }}" class="link-procafes text-decoration-none">
+            ¿Olvidaste tu contraseña?
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
 </div>

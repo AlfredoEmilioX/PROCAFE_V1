@@ -1,58 +1,71 @@
-<?php
+@php
+    use Livewire\Volt\Component;
+    use Livewire\Attributes\Layout;
+    use Illuminate\Support\Facades\Auth;
 
-use App\Livewire\Actions\Logout;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
-use Livewire\Attributes\Layout;
-use Livewire\Volt\Component;
-
-new #[Layout('layouts.guest')] class extends Component
-{
-    /**
-     * Send an email verification notification to the user.
-     */
-    public function sendVerification(): void
+    new #[Layout('components.layouts.app')] class extends Component
     {
-        if (Auth::user()->hasVerifiedEmail()) {
-            $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        public function resend()
+        {
+            if (! auth()->check()) {
+                redirect()->route('login')->send();
+                return;
+            }
 
-            return;
+            auth()->user()->sendEmailVerificationNotification();
+            session()->flash('status', 'Te enviamos un nuevo enlace. Revisa tu bandeja (y Spam/Promociones).');
         }
 
-        Auth::user()->sendEmailVerificationNotification();
+        public function logout()
+        {
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+            redirect('/')->send();
+        }
+    };
+@endphp
 
-        Session::flash('status', 'verification-link-sent');
-    }
-
-    /**
-     * Log the current user out of the application.
-     */
-    public function logout(Logout $logout): void
-    {
-        $logout();
-
-        $this->redirect('/', navigate: true);
-    }
-}; ?>
-
-<div>
-    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
+<div class="row g-4 align-items-stretch">
+  {{-- Imagen izquierda --}}
+  <div class="col-lg-7 d-none d-lg-block">
+    <div class="h-100 rounded-3 overflow-hidden">
+      <img src="{{ asset('images/auth-hero.jpg') }}"
+           alt="Verifica tu correo - PROCAFES"
+           class="w-100 h-100"
+           style="object-fit: cover; min-height: 560px;">
     </div>
+  </div>
 
-    @if (session('status') == 'verification-link-sent')
-        <div class="mb-4 font-medium text-sm text-green-600 dark:text-green-400">
-            {{ __('A new verification link has been sent to the email address you provided during registration.') }}
+  {{-- Mensaje + acciones --}}
+  <div class="col-12 col-lg-5">
+    <div class="card shadow-sm h-100 rounded-4 border-0">
+      <div class="card-body p-4 p-lg-5">
+        <h2 class="h4 mb-2">¡Falta un pasito! ✉️</h2>
+        <p class="text-muted">
+          Te enviamos un correo de verificación a <strong>{{ auth()->user()->email }}</strong>.
+          Abre el enlace para activar tu cuenta. Esto nos ayuda a mantener tu
+          información segura y tu café a salvo.
+        </p>
+
+        @if (session('status'))
+          <div class="alert alert-success" role="alert">{{ session('status') }}</div>
+        @endif
+
+        <div class="d-grid gap-2 mt-4">
+          <button wire:click="resend" class="btn btn-procafes-dark" wire:loading.attr="disabled">
+            Reenviar enlace
+          </button>
+          <button wire:click="logout" class="btn btn-light border">
+            Cerrar sesión
+          </button>
         </div>
-    @endif
 
-    <div class="mt-4 flex items-center justify-between">
-        <x-primary-button wire:click="sendVerification">
-            {{ __('Resend Verification Email') }}
-        </x-primary-button>
-
-        <button wire:click="logout" type="submit" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-            {{ __('Log Out') }}
-        </button>
+        <p class="text-center text-muted mt-3 mb-0" style="font-size:.95rem;">
+          Sugerencia: busca también en <em>Spam</em> o <em>Promociones</em>.  
+          Si no llega en unos minutos, reenvíalo con el botón de arriba.
+        </p>
+      </div>
     </div>
+  </div>
 </div>

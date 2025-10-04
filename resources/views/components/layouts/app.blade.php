@@ -23,11 +23,12 @@
 </head>
 <body class="bg-light">
 
-  {{-- Header completo de la tienda --}}
-  @include('partials.header')
+  {{-- Header minimal (solo logo + PROCAFES) --}}
+  @include('partials.header-auth')
 
-  <main class="container py-4">
-    @yield('content')
+  {{-- Aquí Livewire/Volt inyecta el contenido de la página --}}
+  <main class="container py-5">
+    {{ $slot }}
   </main>
 
   {{-- Bootstrap JS --}}

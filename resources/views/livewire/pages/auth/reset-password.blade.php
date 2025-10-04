@@ -1,105 +1,123 @@
-<?php
+@php
+    use Livewire\Volt\Component;
+    use Livewire\Attributes\Layout;
+    use Illuminate\Support\Facades\Password;
+    use Illuminate\Support\Facades\Hash;
+    use Illuminate\Support\Str;
+    use Illuminate\Auth\Events\PasswordReset;
 
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Str;
-use Illuminate\Validation\Rules;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Locked;
-use Livewire\Volt\Component;
-
-new #[Layout('layouts.guest')] class extends Component
-{
-    #[Locked]
-    public string $token = '';
-    public string $email = '';
-    public string $password = '';
-    public string $password_confirmation = '';
-
-    /**
-     * Mount the component.
-     */
-    public function mount(string $token): void
+    new #[Layout('components.layouts.app')] class extends Component
     {
-        $this->token = $token;
+        public array $state = [
+            'token' => '',
+            'email' => '',
+            'password' => '',
+            'password_confirmation' => '',
+        ];
 
-        $this->email = request()->string('email');
-    }
-
-    /**
-     * Reset the password for the given user.
-     */
-    public function resetPassword(): void
-    {
-        $this->validate([
-            'token' => ['required'],
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-        ]);
-
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
-            $this->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user) {
-                $user->forceFill([
-                    'password' => Hash::make($this->password),
-                    'remember_token' => Str::random(60),
-                ])->save();
-
-                event(new PasswordReset($user));
-            }
-        );
-
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        if ($status != Password::PASSWORD_RESET) {
-            $this->addError('email', __($status));
-
-            return;
+        public function mount()
+        {
+            $this->state['token'] = request()->route('token');      // /reset-password/{token}
+            $this->state['email'] = request()->input('email', '');  // ?email=...
         }
 
-        Session::flash('status', __($status));
+        public function resetPassword()
+        {
+            $data = validator($this->state, [
+                'token' => ['required'],
+                'email' => ['required','email','exists:users,email'],
+                'password' => ['required','min:8','same:password_confirmation'],
+                'password_confirmation' => ['required'],
+            ])->validate();
 
-        $this->redirectRoute('login', navigate: true);
-    }
-}; ?>
+            $status = Password::reset(
+                [
+                    'email' => $data['email'],
+                    'password' => $data['password'],
+                    'password_confirmation' => $data['password_confirmation'],
+                    'token' => $data['token'],
+                ],
+                function ($user) use ($data) {
+                    $user->forceFill(['password' => Hash::make($data['password'])])->save();
+                    $user->setRememberToken(Str::random(60));
+                    event(new PasswordReset($user));
+                }
+            );
 
-<div>
-    <form wire:submit="resetPassword">
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
+            if ($status === Password::PASSWORD_RESET) {
+                redirect()->route('login')->with('status', __($status))->send();
+                return;
+            }
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-            <x-text-input wire:model="password" id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
+            session()->flash('status', __($status));
+        }
+    };
+@endphp
 
-        <!-- Confirm Password -->
-        <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
+<div class="row g-4 align-items-stretch">
+  {{-- Imagen izquierda --}}
+  <div class="col-lg-7 d-none d-lg-block">
+    <div class="h-100 rounded-3 overflow-hidden">
+      <img src="{{ asset('images/auth-hero.jpg') }}"
+           alt="Restablecer contraseña - PROCAFES"
+           class="w-100 h-100"
+           style="object-fit: cover; min-height: 560px;">
+    </div>
+  </div>
 
-            <x-text-input wire:model="password_confirmation" id="password_confirmation" class="block mt-1 w-full"
-                          type="password"
-                          name="password_confirmation" required autocomplete="new-password" />
+  {{-- Form derecha --}}
+  <div class="col-12 col-lg-5">
+    <div class="card shadow-sm h-100 rounded-4 border-0">
+      <div class="card-body p-4 p-lg-5">
+        <h2 class="h4 mb-1">Restablecer contraseña</h2>
+        <p class="text-muted mb-4">Ingresa una nueva contraseña para tu cuenta.</p>
 
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
-        </div>
+        @if (session('status'))
+          <div class="alert alert-info" role="alert">{{ session('status') }}</div>
+        @endif
 
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
-                {{ __('Reset Password') }}
-            </x-primary-button>
-        </div>
-    </form>
+        <form wire:submit="resetPassword" novalidate>
+          <input type="hidden" wire:model="state.token">
+
+          <div class="mb-3">
+            <label for="email" class="form-label">Correo electrónico</label>
+            <input id="email" type="email"
+                   wire:model.defer="state.email"
+                   required autocomplete="email"
+                   class="form-control @error('email') is-invalid @enderror"
+                   placeholder="tucorreo@dominio.com">
+            @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
+
+          <div class="mb-3">
+            <label for="password" class="form-label">Nueva contraseña</label>
+            <input id="password" type="password"
+                   wire:model.defer="state.password" required autocomplete="new-password"
+                   class="form-control @error('password') is-invalid @enderror"
+                   placeholder="••••••••">
+            @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
+
+          <div class="mb-4">
+            <label for="password_confirmation" class="form-label">Confirmar contraseña</label>
+            <input id="password_confirmation" type="password"
+                   wire:model.defer="state.password_confirmation" required autocomplete="new-password"
+                   class="form-control @error('password_confirmation') is-invalid @enderror"
+                   placeholder="••••••••">
+            @error('password_confirmation') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-procafes-dark btn-lg" wire:loading.attr="disabled">
+              Guardar nueva contraseña
+            </button>
+          </div>
+        </form>
+
+        <p class="text-center mt-3 mb-0">
+          <a href="{{ route('login') }}" class="link-procafes text-decoration-none">Volver a iniciar sesión</a>
+        </p>
+      </div>
+    </div>
+  </div>
 </div>

@@ -1,88 +1,155 @@
-<?php
+@php
+    use Livewire\Volt\Component;
+    use Livewire\Attributes\Layout;
+    use Illuminate\Support\Facades\Hash;
+    use Illuminate\Support\Facades\Auth;
+    use App\Models\User;
 
-use App\Models\User;
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
-use Livewire\Attributes\Layout;
-use Livewire\Volt\Component;
-
-new #[Layout('layouts.guest')] class extends Component
-{
-    public string $name = '';
-    public string $email = '';
-    public string $password = '';
-    public string $password_confirmation = '';
-
-    /**
-     * Handle an incoming registration request.
-     */
-    public function register(): void
+    new #[Layout('components.layouts.app')] class extends Component
     {
-        $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-        ]);
+        public array $state = [
+            'name' => '', 'email' => '',
+            'password' => '', 'password_confirmation' => '',
+            'phone' => '', 'address' => '',
+            'document_type' => 'dni', 'document_number' => '',
+        ];
 
-        $validated['password'] = Hash::make($validated['password']);
+        public function register()
+        {
+            $data = validator($this->state, [
+                'name' => ['required','string','max:255'],
+                'email' => ['required','email','max:255','unique:users,email'],
+                'password' => ['required','min:8','same:password_confirmation'],
+                'password_confirmation' => ['required'],
+                'phone' => ['nullable','string','max:20'],
+                'address' => ['nullable','string'],
+                'document_type' => ['nullable','in:dni,ruc'],
+                'document_number' => ['nullable','string','max:20'],
+            ])->validate();
 
-        event(new Registered($user = User::create($validated)));
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'phone' => $data['phone'] ?: null,
+                'address' => $data['address'] ?: null,
+                'role' => 'customer',
+            ]);
 
-        Auth::login($user);
+            Auth::login($user, remember: true);
+            return redirect()->intended('/');
+        }
+    };
+@endphp
 
-        $this->redirect(route('dashboard', absolute: false), navigate: true);
-    }
-}; ?>
+<div class="row g-4 align-items-stretch">
+    {{-- Imagen izquierda (solo ≥ lg) --}}
+<div class="col-lg-7 d-none d-lg-block">
+  <div class="ratio ratio-4x3 rounded-4 overflow-hidden bg-light">
+    <img
+      src="{{ asset('images/cafe_register.jpg') }}"
+      alt="Autenticación PROCAFES"
+      class="w-100 h-100 object-fit-cover"
+    >
+  </div>
+</div>
 
-<div>
-    <form wire:submit="register">
-        <!-- Name -->
-        <div>
-            <x-input-label for="name" :value="__('Name')" />
-            <x-text-input wire:model="name" id="name" class="block mt-1 w-full" type="text" name="name" required autofocus autocomplete="name" />
-            <x-input-error :messages="$errors->get('name')" class="mt-2" />
-        </div>
+  <div class="col-12 col-lg-5">
+    <div class="card shadow-sm h-100 rounded-4 border-0">
+      <div class="card-body p-4 p-lg-5">
+        <h2 class="h4 mb-1">Crea tu cuenta</h2>
+        <p class="text-muted mb-4">Únete a PROCAFES</p>
 
-        <!-- Email Address -->
-        <div class="mt-4">
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
+        <form wire:submit="register" novalidate>
+          <div class="mb-3">
+            <label for="name" class="form-label">Nombre completo</label>
+            <input id="name" type="text" wire:model.defer="state.name"
+                   required autofocus
+                   class="form-control @error('name') is-invalid @enderror"
+                   placeholder="Tu nombre y apellidos">
+            @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
+          <div class="mb-3">
+            <label for="email" class="form-label">Correo electrónico</label>
+            <input id="email" type="email" wire:model.defer="state.email"
+                   required autocomplete="email"
+                   class="form-control @error('email') is-invalid @enderror"
+                   placeholder="tucorreo@dominio.com">
+            @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-            <x-text-input wire:model="password" id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="new-password" />
+          <div class="mb-3">
+            <label for="phone" class="form-label">Teléfono</label>
+            <input id="phone" type="text" wire:model.defer="state.phone"
+                   class="form-control @error('phone') is-invalid @enderror"
+                   placeholder="9XXXXXXXX">
+            @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
+          <div class="mb-3">
+            <label for="address" class="form-label">Dirección</label>
+            <textarea id="address" rows="2" wire:model.defer="state.address"
+                      class="form-control @error('address') is-invalid @enderror"
+                      placeholder="Calle, número, referencia"></textarea>
+            @error('address') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-        <!-- Confirm Password -->
-        <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
+          <div class="row g-3 mb-3">
+            <div class="col-sm-5">
+              <label for="document_type" class="form-label">Documento</label>
+              <select id="document_type" class="form-select"
+                      wire:model="state.document_type">
+                <option value="dni">DNI</option>
+                <option value="ruc">RUC</option>
+              </select>
+            </div>
+            <div class="col-sm-7">
+              <label for="document_number" class="form-label">N° Documento</label>
+              <input id="document_number" type="text"
+                     wire:model.defer="state.document_number"
+                     class="form-control @error('document_number') is-invalid @enderror"
+                     placeholder="DNI: 8 dígitos / RUC: 11 dígitos">
+              @error('document_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+          </div>
 
-            <x-text-input wire:model="password_confirmation" id="password_confirmation" class="block mt-1 w-full"
-                            type="password"
-                            name="password_confirmation" required autocomplete="new-password" />
+          <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <input id="password" type="password"
+                   wire:model.defer="state.password" required autocomplete="new-password"
+                   class="form-control @error('password') is-invalid @enderror"
+                   placeholder="••••••••">
+            @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
-        </div>
+          <div class="mb-4">
+            <label for="password_confirmation" class="form-label">Confirmar contraseña</label>
+            <input id="password_confirmation" type="password"
+                   wire:model.defer="state.password_confirmation" required autocomplete="new-password"
+                   class="form-control @error('password_confirmation') is-invalid @enderror"
+                   placeholder="••••••••">
+            @error('password_confirmation') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('login') }}" wire:navigate>
-                {{ __('Already registered?') }}
-            </a>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-procafes-dark btn-lg" wire:loading.attr="disabled">
+              Crear cuenta
+            </button>
+          </div>
+        </form>
 
-            <x-primary-button class="ms-4">
-                {{ __('Register') }}
-            </x-primary-button>
-        </div>
-    </form>
+        <div class="text-center my-3"><span class="text-muted">o</span></div>
+        <a href="{{ route('auth.google.redirect') }}"
+           class="btn btn-light border w-100 d-flex align-items-center justify-content-center gap-2">
+          <i class="bi bi-google"></i> Registrarme con Google
+        </a>
+
+        <p class="text-center mt-3 mb-0">
+          ¿Ya tienes cuenta?
+          <a href="{{ route('login') }}" class="link-procafes text-decoration-none">Inicia sesión</a>
+        </p>
+      </div>
+    </div>
+  </div>
 </div>

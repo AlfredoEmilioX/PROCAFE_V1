@@ -6,20 +6,16 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
-    {
-        Schema::create('orders', function (Blueprint $table) {
-            $table->id('orders_id');
+    public function up(): void
+{
+    Schema::create('orders', function (Illuminate\Database\Schema\Blueprint $table) {
+        $table->id();
+        $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+        $table->foreignId('shipping_address_id')->constrained('shipping_addresses')->cascadeOnDelete();
+        $table->decimal('total_price', 10, 2);
+        $table->enum('status', ['pending','paid','shipped','cancelled'])->default('pending');
+        $table->timestamps();
+    });
+}
 
-            $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
-
-            $table->unsignedBigInteger('user_address_id');
-            $table->foreign('user_address_id')->references('shipping_addresses_id')->on('shipping_addresses')->onDelete('cascade');
-
-            $table->decimal('total_price', 10, 2);
-            $table->enum('status', ['pending', 'paid', 'shipped', 'cancelled'])->default('pending');
-            $table->timestamps();
-        });
-    }
 };
