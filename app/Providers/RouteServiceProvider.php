@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
 {
-    public const HOME = '/';
+    public const HOME = '/admin';
 
     public function boot(): void
     {
@@ -27,6 +27,16 @@ class RouteServiceProvider extends ServiceProvider
                 ->group(base_path('routes/api.php'));
 
         }
+        
+            Route::get('/', fn() => view('welcome'))->name('home');
+
+            Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(function () {
+                Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+                // Aquí luego irán:
+                // Route::resource('categories', CategoryController::class);
+                // Route::resource('brands', BrandController::class);
+                // Route::resource('products', ProductController::class);
+            });
     });
     }
 }
