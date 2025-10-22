@@ -12,7 +12,7 @@ return new class extends Migration {
 
             // Mantenemos tus columnas de relación tal cual (sin FK por ahora)
             $table->unsignedBigInteger('categories_id')->nullable(); // relación con categories (la FK la añadimos luego)
-            $table->unsignedBigInteger('brands_id')->nullable();     // relación con brands (la FK la añadimos luego)
+            $table->unsignedBigInteger('brand_id')->nullable();     // relación con brands (la FK la añadimos luego)
 
             $table->string('name', 255);
             $table->string('slug', 255)->unique();

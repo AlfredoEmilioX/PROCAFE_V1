@@ -2,62 +2,79 @@
 @section('title','Inicio | PROCAFES')
 
 @section('content')
-@php use Illuminate\Support\Facades\Storage; @endphp
+@php
+  use Illuminate\Support\Facades\Storage;
+  use Illuminate\Support\Str;
+@endphp
 
 <div class="container-fluid">
   <div class="row g-3">
+
     {{-- Sidebar filtros --}}
     <aside class="col-12 col-lg-3">
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <h5 class="mb-3">Filtrar</h5>
+
           <form method="GET" action="{{ route('home') }}" class="vstack gap-3">
+
+            {{-- Buscar --}}
             <div>
               <label class="form-label">Buscar</label>
-              <input type="text" name="q" value="{{ $q }}" placeholder="Café, molido, etc." class="form-control">
+              <input
+                type="text"
+                name="q"
+                value="{{ request('q','') }}"
+                placeholder="Café, molido, etc."
+                class="form-control"
+              >
             </div>
 
+            {{-- Categoría --}}
             <div>
               <label class="form-label">Categoría</label>
               <select name="category" class="form-select">
                 <option value="">Todas</option>
                 @foreach($categories as $c)
-                  <option value="{{ $c->categories_id }}" @selected((string)$category === (string)$c->categories_id)>
+                  <option value="{{ $c->id }}" @selected((string)request('category') === (string)$c->id)>
                     {{ $c->name }}
                   </option>
                 @endforeach
               </select>
             </div>
 
+            {{-- Marca --}}
             <div>
               <label class="form-label">Marca</label>
               <select name="brand" class="form-select">
                 <option value="">Todas</option>
                 @foreach($brands as $b)
-                  <option value="{{ $b->brands_id }}" @selected((string)$brand === (string)$b->brands_id)>
+                  <option value="{{ $b->id }}" @selected((string)request('brand') === (string)$b->id)>
                     {{ $b->name }}
                   </option>
                 @endforeach
               </select>
             </div>
 
+            {{-- Precio --}}
             <div class="row g-2">
               <div class="col">
                 <label class="form-label">Min (S/)</label>
-                <input type="number" step="0.01" min="0" name="min" value="{{ old('min', $min) }}" class="form-control">
+                <input type="number" step="0.01" min="0" name="min" value="{{ request('min') }}" class="form-control">
               </div>
               <div class="col">
                 <label class="form-label">Max (S/)</label>
-                <input type="number" step="0.01" min="0" name="max" value="{{ old('max', $max) }}" class="form-control">
+                <input type="number" step="0.01" min="0" name="max" value="{{ request('max') }}" class="form-control">
               </div>
             </div>
 
+            {{-- Orden --}}
             <div>
               <label class="form-label">Ordenar por</label>
               <select name="sort" class="form-select">
-                <option value="new" @selected($sort==='new')>Nuevos primero</option>
-                <option value="price_asc" @selected($sort==='price_asc')>Precio: menor a mayor</option>
-                <option value="price_desc" @selected($sort==='price_desc')>Precio: mayor a menor</option>
+                <option value="new"        @selected(request('sort','new')==='new')>Nuevos primero</option>
+                <option value="price_asc"  @selected(request('sort')==='price_asc')>Precio: menor a mayor</option>
+                <option value="price_desc" @selected(request('sort')==='price_desc')>Precio: mayor a menor</option>
               </select>
             </div>
 
@@ -77,7 +94,7 @@
         <small class="text-muted">{{ $products->total() }} resultados</small>
       </div>
 
-      @if($products->isEmpty())
+      @if(!$products->count())
         <div class="alert alert-info">No se encontraron productos con los filtros seleccionados.</div>
       @else
         <div class="row g-3">
@@ -111,7 +128,7 @@
                 {{-- Acciones --}}
                 <div class="card-footer bg-white border-0 pt-0 pb-3 px-3">
                   <div class="vstack gap-2">
-                    
+
                     {{-- Agregar al carrito (AJAX / sin login) --}}
                     <button
                       type="button"

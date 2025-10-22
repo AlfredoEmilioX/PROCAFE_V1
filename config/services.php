@@ -41,4 +41,15 @@ return [
     'redirect'      => env('GOOGLE_REDIRECT', 'http://localhost:8000/auth/google/callback'),
     ],
 
+    'payu' => [
+    'merchant_id' => env('PAYU_MERCHANT_ID'),
+    'api_login'   => env('PAYU_API_LOGIN'),
+    'api_key'     => env('PAYU_API_KEY'),
+    'public_key'  => env('PAYU_PUBLIC_KEY'),
+    'account_id'  => env('PAYU_ACCOUNT_ID'),
+    'currency'    => env('PAYU_CURRENCY', 'PEN'),
+    'mode'        => env('PAYU_MODE', 'sandbox'),
+    'response'    => env('PAYU_RESPONSE_URL'),
+    'confirmation'=> env('PAYU_CONFIRMATION_URL'),
+    ],
 ];

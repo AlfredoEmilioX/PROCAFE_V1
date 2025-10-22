@@ -28,25 +28,42 @@ class CartController extends Controller
         ]);
     }
 
-    /** Guardar carrito en sesión recalculando count y total */
-    private function putCart(array $cart): void
+    /**
+     * Guardar carrito en sesión recalculando count y total (con saneo)
+     * Devuelve el carrito ya corregido y persistido.
+     */
+    private function putCart(array $cart): array
     {
         $items = $cart['items'] ?? [];
 
         $count = 0;
         $total = 0.0;
 
-        foreach ($items as $it) {
-            $qty   = (int) ($it['qty'] ?? 0);
-            $price = (float) ($it['price'] ?? 0.0);
+        // Sanea y recalcula
+        foreach ($items as $rowId => &$it) {
+            $qty   = (int) ($it['qty'] ?? 1);
+            $price = (float) ($it['price'] ?? 0);
+
+            // Forzar rangos válidos
+            $qty   = max(1, min(self::MAX_QTY, $qty));
+            $price = max(0, $price);
+
+            // Guardar saneados
+            $it['qty']   = $qty;
+            $it['price'] = $price;
+
             $count += $qty;
             $total += $price * $qty;
         }
+        unset($it);
 
+        $cart['items'] = $items;
         $cart['count'] = $count;
         $cart['total'] = round($total, 2);
 
         session()->put('cart', $cart);
+
+        return $cart;
     }
 
     /** Generar rowId estable por producto + variación */
@@ -64,7 +81,9 @@ class CartController extends Controller
     /** GET /cart */
     public function index()
     {
-        return response()->json($this->getCart());
+        // Devolver siempre el carrito saneado
+        $cart = $this->putCart($this->getCart());
+        return response()->json($cart);
     }
 
     /**
@@ -92,7 +111,10 @@ class CartController extends Controller
         $rowId   = $this->makeRowId($data['id'], $variant);
 
         if (isset($cart['items'][$rowId])) {
-            $cart['items'][$rowId]['qty'] = max(1, min(self::MAX_QTY, (int)$cart['items'][$rowId]['qty'] + $qty));
+            $cart['items'][$rowId]['qty'] = max(
+                1,
+                min(self::MAX_QTY, (int) $cart['items'][$rowId]['qty'] + $qty)
+            );
         } else {
             $cart['items'][$rowId] = [
                 'rowId'   => $rowId,
@@ -106,7 +128,7 @@ class CartController extends Controller
             ];
         }
 
-        $this->putCart($cart);
+        $cart = $this->putCart($cart); // usar carrito recalculado
 
         return response()->json($cart);
     }
@@ -125,13 +147,14 @@ class CartController extends Controller
 
         if (!isset($cart['items'][$rowId])) {
             // Si no existe el item, devolver estado actual (no es error grave para UI)
+            $cart = $this->putCart($cart);
             return response()->json($cart);
         }
 
-        $qty = max(1, min(self::MAX_QTY, (int)$data['qty']));
+        $qty = max(1, min(self::MAX_QTY, (int) $data['qty']));
         $cart['items'][$rowId]['qty'] = $qty;
 
-        $this->putCart($cart);
+        $cart = $this->putCart($cart);
 
         return response()->json($cart);
     }
@@ -143,7 +166,10 @@ class CartController extends Controller
 
         if (isset($cart['items'][$rowId])) {
             unset($cart['items'][$rowId]);
-            $this->putCart($cart);
+            $cart = $this->putCart($cart);
+        } else {
+            // Aún así, forzar saneo para consistencia
+            $cart = $this->putCart($cart);
         }
 
         return response()->json($cart);

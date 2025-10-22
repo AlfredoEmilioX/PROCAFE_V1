@@ -1,83 +1,68 @@
-<div class="container py-5"><!-- ÚNICO ELEMENTO RAÍZ -->
-  <div class="row g-4 align-items-stretch">
-    {{-- Imagen izquierda (solo ≥ lg) --}}
-    <div class="col-lg-7 d-none d-lg-block">
-      <div class="ratio ratio-4x3 rounded-4 overflow-hidden bg-light">
-        <img
-          src="{{ asset('images/cafe_register.jpg') }}"
-          alt="Autenticación PROCAFES"
-          class="w-100 h-100"
-          style="object-fit: cover;"  {{-- Bootstrap no trae .object-fit-cover por defecto --}}
-        >
-      </div>
-    </div>
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-7 col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <h4 class="mb-1">Iniciar sesión</h4>
+          <p class="text-muted mb-4">Usa tu correo y contraseña para continuar.</p>
 
-    {{-- Form derecha --}}
-    <div class="col-12 col-lg-5">
-      <div class="card shadow-sm h-100 rounded-4 border-0">
-        <div class="card-body p-4 p-lg-5">
-          <h2 class="h4 mb-1">Bienvenido(a) a PROCAFES</h2>
-          <p class="text-muted mb-4">Inicia sesión en tu cuenta</p>
-
-          @if (session('status'))
-            <div class="alert alert-success" role="alert">{{ session('status') }}</div>
+          {{-- Mensajes de error global --}}
+          @if ($errors->any())
+            <div class="alert alert-danger py-2">
+              {{ $errors->first() }}
+            </div>
           @endif
 
-          {{-- Error general de credenciales si falla --}}
-          @error('state.email')
-            <div class="alert alert-danger" role="alert">{{ $message }}</div>
-          @enderror
-
-          {{-- IMPORTANTE: prevenir submit nativo --}}
-          <form wire:submit.prevent="login" novalidate>
-            <div class="mb-3">
-              <label for="email" class="form-label">Correo electrónico</label>
-              <input id="email" type="email"
-                     wire:model.defer="state.email" required autocomplete="email" autofocus
+          <form wire:submit.prevent="login" class="vstack gap-3">
+            <div>
+              <label class="form-label">Correo electrónico</label>
+              <input type="email"
                      class="form-control @error('state.email') is-invalid @enderror"
-                     placeholder="tucorreo@dominio.com">
+                     wire:model.defer="state.email"
+                     placeholder="tu@correo.com" required>
               @error('state.email') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
-            <div class="mb-3">
-              <label for="password" class="form-label">Contraseña</label>
-              <input id="password" type="password"
-                     wire:model.defer="state.password" required autocomplete="current-password"
+            <div>
+              <label class="form-label">Contraseña</label>
+              <input type="password"
                      class="form-control @error('state.password') is-invalid @enderror"
-                     placeholder="••••••••">
+                     wire:model.defer="state.password"
+                     placeholder="••••••••" required>
               @error('state.password') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex justify-content-between align-items-center">
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="remember" wire:model="state.remember">
+                <input class="form-check-input" type="checkbox" id="remember"
+                       wire:model.defer="state.remember">
                 <label class="form-check-label" for="remember">Recordarme</label>
               </div>
+
               @if (Route::has('password.request'))
-                <a class="text-decoration-none link-primary" href="{{ route('password.request') }}">
-                  ¿Olvidaste tu contraseña?
-                </a>
+                <a href="{{ route('password.request') }}" class="small">¿Olvidaste tu contraseña?</a>
               @endif
             </div>
 
-            <div class="d-grid">
-              {{-- Si no tienes .btn-procafes-dark, usa btn-primary --}}
-              <button type="submit" class="btn btn-procafes-dark btn-lg" wire:loading.attr="disabled">
-                Ingresar
-              </button>
-            </div>
+            <button class="btn btn-procafes-dark w-100" wire:loading.attr="disabled">
+              <span wire:loading.remove>Ingresar</span>
+              <span wire:loading>Ingresando…</span>
+            </button>
           </form>
 
-          <div class="text-center my-3"><span class="text-muted">o</span></div>
+          {{-- Social (opcional) --}}
+          @if (Route::has('auth.google.redirect'))
+            <hr class="my-4">
+            <a href="{{ route('auth.google.redirect') }}" class="btn btn-outline-secondary w-100">
+              <i class="bi bi-google me-2"></i> Continuar con Google
+            </a>
+          @endif
 
-          <a href="{{ route('auth.google.redirect') }}"
-             class="btn btn-light border w-100 d-flex align-items-center justify-content-center gap-2 mb-2">
-            <i class="bi bi-google"></i> Continuar con Google
-          </a>
-
-          <p class="text-center mt-3 mb-0">
+          <p class="text-center mt-4 mb-0">
             ¿No tienes cuenta?
-            <a href="{{ route('register') }}" class="text-decoration-none link-primary">Crear cuenta</a>
+            @if (Route::has('register'))
+              <a href="{{ route('register') }}">Regístrate</a>
+            @endif
           </p>
         </div>
       </div>

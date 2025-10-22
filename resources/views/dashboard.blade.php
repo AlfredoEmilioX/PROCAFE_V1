@@ -1,168 +1,233 @@
 @extends('layouts.admin')
+@section('title','Panel | PROCAFES')
 
 @push('styles')
 <style>
-  .info-box{display:flex;align-items:center;gap:.75rem;background:#fff;border:0;border-radius:.75rem;padding:1rem;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-  .info-box .icon{font-size:1.8rem;opacity:.7}
-  .info-box .value{font-weight:700;font-size:1.6rem;margin:0}
-  .info-box.teal   {border-left:6px solid #20c997}
-  .info-box.green  {border-left:6px solid #28a745}
-  .info-box.yellow {border-left:6px solid #ffc107}
-  .info-box.red    {border-left:6px solid #dc3545}
-  .card-ghost{background:#fff;border-radius:.75rem;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  :root{
+    --pcf-primary:#f2dd6c;
+    --pcf-dark:#3e350e;
+    --pcf-bg:#faf8ef;
+  }
+  body{ background:var(--pcf-bg); }
+  .chip{
+    display:flex; align-items:center; gap:.5rem;
+    background:#fff; border:1px solid rgba(0,0,0,.08);
+    padding:.65rem .8rem; border-radius:.75rem; white-space:nowrap;
+  }
+  .chip i{ color:var(--pcf-dark); }
+  .stat-card{ border:1px solid rgba(0,0,0,.06); }
+  .stat-ico{
+    width:44px;height:44px;border-radius:.75rem;
+    display:grid;place-items:center; background:var(--pcf-primary); color:var(--pcf-dark);
+  }
+  .btn-procafes{ background:var(--pcf-dark); color:#fff; border:0; }
+  .btn-procafes:hover{ filter:brightness(1.08); color:#fff; }
+  .link-muted{ color:#6c757d; text-decoration:none;}
+  .link-muted:hover{ color:#495057; }
+  .scroll-x{ overflow:auto; }
+  .shadow-soft{ box-shadow:0 .5rem 1rem rgba(0,0,0,.06)!important; }
 </style>
 @endpush
 
 @section('admin-content')
-<div class="row g-3">
-  <div class="col-12">
-    <h1 class="h4 mb-1">Dashboard</h1>
-    <p class="text-muted">Resumen general del sistema</p>
-  </div>
 
-  {{-- Tarjetas tipo "info box" --}}
-  <div class="col-md-3">
-    <div class="info-box teal">
-      <i class="bi bi-box-seam icon"></i>
-      <div>
-        <div class="text-muted">Productos</div>
-        <p class="value mb-0">{{ $cards['products'] }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="info-box green">
-      <i class="bi bi-tags icon"></i>
-      <div>
-        <div class="text-muted">Categorías</div>
-        <p class="value mb-0">{{ $cards['categories'] }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="info-box yellow">
-      <i class="bi bi-receipt icon"></i>
-      <div>
-        <div class="text-muted">Pedidos</div>
-        <p class="value mb-0">{{ $cards['orders'] }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="info-box red">
-      <i class="bi bi-people icon"></i>
-      <div>
-        <div class="text-muted">Clientes</div>
-        <p class="value mb-0">{{ $cards['customers'] }}</p>
-      </div>
-    </div>
-  </div>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 mb-0">Panel</h1>
 
-  {{-- Gráficos --}}
-  <div class="col-lg-8">
-    <div class="card-ghost p-3">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">Ventas (últimos 6 meses)</h5>
-        <span class="badge text-bg-secondary">S/</span>
-      </div>
-      <canvas id="salesChart" height="120"></canvas>
-    </div>
-  </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{{ route('home') }}" target="_blank">
+        <i class="bi bi-shop-window me-1"></i> Ver tienda
+      </a>
 
-  <div class="col-lg-4">
-    <div class="card-ghost p-3">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">Pedidos por estado</h5>
-      </div>
-      <canvas id="statusChart" height="260"></canvas>
-      @php
-        $mapping = ['pending'=>'Pendiente', 'paid'=>'Pagado', 'shipped'=>'Enviado', 'cancelled'=>'Cancelado'];
-        $labelsStatus = collect($statusCounts)->keys()->map(fn($k)=>$mapping[$k] ?? $k)->values();
-      @endphp
-      <div class="mt-2 small text-muted">
-        @foreach($labelsStatus as $i => $lab)
-          <span class="me-2">{{ $lab }}: {{ collect($statusCounts)->values()[$i] ?? 0 }}</span>
-        @endforeach
+      <a href="{{ route('admin.products.create') }}" class="btn btn-sm btn-procafes">
+        <i class="bi bi-plus-lg me-1"></i> Nuevo producto
+      </a>
+
+      {{-- Reportes --}}
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-dark dropdown-toggle" data-bs-toggle="dropdown">
+          <i class="bi bi-download me-1"></i> Reportes
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <a class="dropdown-item"
+               href="{{ Route::has('admin.reports.revenue') ? route('admin.reports.revenue') : url('/admin/reports/revenue.csv') }}">
+              <i class="bi bi-graph-up me-2"></i>Ingresos (últimos 12 meses)
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item"
+               href="{{ Route::has('admin.reports.best') ? route('admin.reports.best') : url('/admin/reports/best-sellers.csv') }}">
+              <i class="bi bi-trophy me-2"></i>Más vendidos (Top)
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item"
+               href="{{ Route::has('admin.reports.products') ? route('admin.reports.products') : url('/admin/reports/products.csv') }}">
+              <i class="bi bi-box-seam me-2"></i>Inventario de productos
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item"
+               href="{{ Route::has('admin.reports.orders')
+                      ? route('admin.reports.orders', ['from'=>now()->subDays(30)->toDateString(),'to'=>now()->toDateString()])
+                      : url('/admin/reports/orders.csv?from='.now()->subDays(30)->toDateString().'&to='.now()->toDateString()) }}">
+              <i class="bi bi-receipt me-2"></i>Órdenes (últimos 30 días)
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
   </div>
 
-  {{-- (Opcional) Tabla de últimos pedidos --}}
-  <div class="col-12">
-    <div class="card-ghost p-3">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h5 class="mb-0">Últimos pedidos</h5>
-      </div>
-      @php $orders = \App\Models\Order::with('user')->latest()->take(8)->get(); @endphp
-      @if($orders->isEmpty())
-        <p class="text-muted mb-0">Aún no hay pedidos.</p>
-      @else
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>#</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              @foreach($orders as $o)
-                <tr>
-                  <td>{{ $o->id }}</td>
-                  <td>{{ optional($o->user)->name ?? '—' }}</td>
-                  <td>S/ {{ number_format($o->total_price,2) }}</td>
-                  <td class="text-capitalize"><span class="badge text-bg-secondary">{{ $o->status }}</span></td>
-                  <td>{{ optional($o->created_at)->format('d/m/Y H:i') }}</td>
-                </tr>
-              @endforeach
-            </tbody>
-          </table>
+  {{-- Tarjetas de métricas --}}
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card stat-card shadow-soft">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="stat-ico"><i class="bi bi-coin fs-5"></i></div>
+          <div class="flex-grow-1">
+            <div class="small text-muted">Ingresos totales</div>
+            <div class="fs-4 fw-bold">S/ {{ number_format($stats['revenue'] ?? 0, 2) }}</div>
+          </div>
         </div>
-      @endif
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card stat-card shadow-soft">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="stat-ico"><i class="bi bi-bag-check fs-5"></i></div>
+          <div class="flex-grow-1">
+            <div class="small text-muted">Órdenes totales</div>
+            <div class="fs-4 fw-bold">{{ number_format($stats['orders'] ?? 0) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card stat-card shadow-soft">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="stat-ico"><i class="bi bi-box-seam fs-5"></i></div>
+          <div class="flex-grow-1">
+            <div class="small text-muted">Productos totales</div>
+            <div class="fs-4 fw-bold">{{ number_format($stats['products'] ?? 0) }}</div>
+          </div>
+          <a class="link-muted small" href="{{ route('admin.products.index') }}">Crear nuevo</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card stat-card shadow-soft">
+        <div class="card-body d-flex align-items-center gap-3">
+          <div class="stat-ico"><i class="bi bi-people fs-5"></i></div>
+          <div class="flex-grow-1">
+            <div class="small text-muted">Clientes totales</div>
+            <div class="fs-4 fw-bold">{{ number_format($stats['customers'] ?? 0) }}</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-</div>
+
+  {{-- Categorías --}}
+  <div class="card shadow-soft mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="mb-0">Categorías</h6>
+        <a href="{{ route('admin.categories.index') }}" class="link-muted small">Gestionar</a>
+      </div>
+      <div class="d-flex gap-2 scroll-x">
+        @forelse($chips ?? [] as $c)
+          <div class="chip"><i class="bi {{ $c['i'] }}"></i> {{ $c['t'] }}</div>
+        @empty
+          <span class="text-muted small">No hay categorías</span>
+        @endforelse
+      </div>
+    </div>
+  </div>
+
+  {{-- Reporte de ingresos + Más vendidos --}}
+  <div class="row g-3">
+    <div class="col-12 col-xl-7">
+      <div class="card shadow-soft h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0">Reporte de ingresos</h6>
+            <span class="badge" style="background:var(--pcf-primary); color:var(--pcf-dark)">Últimos 12 meses</span>
+          </div>
+          <canvas id="revChart" height="110"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-5">
+      <div class="card shadow-soft h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0">Productos más vendidos</h6>
+            <span class="small text-muted">Top 5</span>
+          </div>
+          <ul class="list-group list-group-flush">
+            @forelse($best ?? [] as $b)
+              <li class="list-group-item d-flex align-items-center">
+                <img class="rounded me-3" src="{{ $b['img'] ?? 'https://via.placeholder.com/56' }}" width="48" height="48" alt="">
+                <div class="flex-grow-1">
+                  <div class="fw-semibold">{{ $b['name'] }}</div>
+                  @if(!empty($b['sku']))<div class="text-muted small">{{ $b['sku'] }}</div>@endif
+                </div>
+                <div class="text-end small">
+                  @if(!empty($b['price']))<div>Precio: S/ {{ number_format($b['price'], 2) }}</div>@endif
+                  <div>Unid.: {{ (int)($b['orders'] ?? 0) }}</div>
+                  <div class="fw-semibold">Importe: S/ {{ number_format((float)($b['amount'] ?? 0), 2) }}</div>
+                </div>
+              </li>
+            @empty
+              <li class="list-group-item text-muted small">Aún no hay ventas</li>
+            @endforelse
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
 @endsection
 
 @push('scripts')
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    const labels = @json($labels);
-    const sales  = @json($sales);
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const PCF_DARK = getComputedStyle(document.documentElement).getPropertyValue('--pcf-dark').trim();
+  const PCF_PRIM = getComputedStyle(document.documentElement).getPropertyValue('--pcf-primary').trim();
 
-    const statusData = @json($statusCounts);
-    const statusLabels = Object.keys(statusData).map(k => ({pending:'Pendiente',paid:'Pagado',shipped:'Enviado',cancelled:'Cancelado'}[k] ?? k));
-    const statusValues = Object.values(statusData);
+  const labels = @json($labels ?? []);
+  const values = @json($revenue ?? []);
 
-    // Línea (ventas)
-    new Chart(document.getElementById('salesChart'), {
+  const el = document.getElementById('revChart');
+  if (el && labels.length && values.length) {
+    new Chart(el, {
       type: 'line',
       data: {
         labels,
         datasets: [{
-          label: 'Ventas (S/)',
-          data: sales,
+          label: 'Ingresos',
+          data: values,
           fill: true,
+          borderColor: PCF_DARK,
+          backgroundColor: PCF_PRIM + '55',
           tension: .35,
-          borderWidth: 2,
+          pointRadius: 2,
+          pointBackgroundColor: PCF_DARK,
         }]
       },
       options: {
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
+        responsive: true,
+        scales: {
+          y: { grid: { color:'rgba(0,0,0,.05)' } },
+          x: { grid: { display:false } }
+        },
+        plugins: { legend: { display:false } }
       }
     });
-
-    // Donut (pedidos por estado)
-    new Chart(document.getElementById('statusChart'), {
-      type: 'doughnut',
-      data: {
-        labels: statusLabels,
-        datasets: [{ data: statusValues }]
-      },
-      options: {
-        plugins: { legend: { position: 'bottom' } },
-        cutout: '60%'
-      }
-    });
-  </script>
+  }
+</script>
 @endpush

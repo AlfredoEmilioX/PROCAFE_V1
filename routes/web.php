@@ -4,55 +4,74 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
+// PÚBLICO / BASE
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\Auth\GoogleController;
-use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\CategoryController;
-use App\Http\Controllers\Admin\BrandController;
-use App\Http\Controllers\Admin\ProductController;
-use App\Http\Controllers\Admin\UserController;
-use App\Livewire\Pages\Auth\Login as LoginPage;
+
+// CLIENTE AUTENTICADO
+use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
+
+// CHECKOUT DEMO
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\PaymentDemoController;
+
+// ADMIN CRUD
+use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Admin\BrandController     as AdminBrandController;
+use App\Http\Controllers\Admin\ProductController   as AdminProductController;
+use App\Http\Controllers\Admin\UserController      as AdminUserController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\ReportController;
+// PayU
+use App\Http\Controllers\PayUController;
+
+// ===== Route Model Binding seguro para PKs personalizadas =====
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Product;
+
+Route::bind('brand', function ($value) {
+    return Brand::where('brand_id', $value)->firstOrFail();
+});
+Route::bind('category', function ($value) {
+    return Category::where('category_id', $value)->firstOrFail();
+});
+Route::bind('product', function ($value) {
+    return Product::where('product_id', $value)->firstOrFail();
+});
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes
+| RUTAS PÚBLICAS
 |--------------------------------------------------------------------------
 */
-
-/* =========================
-|  PÚBLICO
-========================= */
-
-// Home (usa el controlador; elimina la Route::view duplicada)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::view('/nosotros', 'nosotros')->name('nosotros');
 Route::view('/ubicanos', 'ubicanos')->name('ubicanos');
 
-
-// Carrito (SESIÓN, sin login, sin parámetros)
-Route::middleware(['web'])->prefix('cart')->name('cart.')->group(function () {
-    Route::get('/',           [CartController::class, 'index'])->name('index');   // GET    /cart
-    Route::post('/add',       [CartController::class, 'add'])->name('add');       // POST   /cart/add
-    Route::patch('/{rowId}',  [CartController::class, 'update'])->name('update'); // PATCH  /cart/{rowId}
-    Route::delete('/{rowId}', [CartController::class, 'remove'])->name('remove'); // DELETE /cart/{rowId}
-    Route::delete('/',        [CartController::class, 'clear'])->name('clear');   // DELETE /cart
+// Carrito (por sesión)
+Route::prefix('cart')->name('cart.')->group(function () {
+    Route::get('/',           [CartController::class, 'index'])->name('index');
+    Route::post('/add',       [CartController::class, 'add'])->name('add');
+    Route::patch('/{rowId}',  [CartController::class, 'update'])->name('update');
+    Route::delete('/{rowId}', [CartController::class, 'remove'])->name('remove');
+    Route::delete('/',        [CartController::class, 'clear'])->name('clear');
 });
 
-// (Opcional) Si ya tienes checkout, descomenta y crea la vista/controlador
-// Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
+// Login/Register (Livewire)
+// Login y Registro (vistas Blade)
+Route::view('/login', 'auth.login')->middleware('guest')->name('login');
+Route::view('/register', 'auth.register')->middleware('guest')->name('register');
 
-// Auth Google
+// Google OAuth
 Route::prefix('auth/google')->name('auth.google.')->group(function () {
-    Route::get('/redirect',  [GoogleController::class, 'redirect'])->name('redirect');
-    Route::get('/callback',  [GoogleController::class, 'callback'])->name('callback');
+    Route::get('/redirect', [GoogleController::class, 'redirect'])->name('redirect');
+    Route::get('/callback', [GoogleController::class, 'callback'])->name('callback');
 });
 
-// Login (Livewire Page)
-Route::get('/login', LoginPage::class)->middleware('guest')->name('login');
-
-// Logout (POST)
+// Logout
 Route::post('/logout', function (Request $request) {
     Auth::guard('web')->logout();
     $request->session()->invalidate();
@@ -60,58 +79,107 @@ Route::post('/logout', function (Request $request) {
     return redirect()->route('home');
 })->middleware('auth')->name('logout');
 
-
-/* =========================
-|  CLIENTE AUTENTICADO
-========================= */
+/*
+|--------------------------------------------------------------------------
+| RUTAS AUTENTICADAS (CLIENTE)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth')->group(function () {
+    Route::get('/cliente', [CustomerDashboard::class, 'index'])->name('customer.dashboard');
+
     Route::view('/profile', 'profile')->name('profile');
     Route::view('/mis-productos', 'products')->name('customer.products');
 
-    // Wishlist protegida
-    Route::get('/wishlist',                          [WishlistController::class, 'index'])->name('wishlist.index');
-    Route::post('/wishlist/add/{productId}',         [WishlistController::class, 'store'])->name('wishlist.add');
-    Route::delete('/wishlist/remove/{productId}',    [WishlistController::class, 'destroy'])->name('wishlist.remove');
-});
+    // Wishlist
+    Route::get('/wishlist',                       [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/add/{productId}',      [WishlistController::class, 'store'])->name('wishlist.add');
+    Route::delete('/wishlist/remove/{productId}', [WishlistController::class, 'destroy'])->name('wishlist.remove');
 
+    // Checkout DEMO
+    Route::get('/checkout',  [CheckoutController::class, 'index'])->name('checkout');
+    Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
 
-/* =========================
-|  ADMIN
-========================= */
-Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth','admin'])
-    ->name('dashboard');
-
-Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::resource('categories', CategoryController::class)->except(['show']);
-    Route::resource('brands',     BrandController::class)->except(['show']);
-    Route::resource('products',   ProductController::class)->except(['show']);
-    Route::resource('users',      UserController::class)->except(['show']);
+    // Simulación pagos
+    Route::get('/payments/redirect', [PaymentDemoController::class, 'redirect'])->name('payments.redirect');
+    Route::get('/payments/response', [PaymentDemoController::class, 'response'])->name('payments.response');
 });
 
 /*
- * ⚠️ Tenías recursos públicos para brands/products/users fuera de /admin.
- * Si realmente necesitas exponerlos públicamente, vuelve a activarlos; por defecto los quito
- * para evitar duplicados o fugas de rutas de administración.
- */
-// Route::resource('brands', BrandController::class)->except(['show']);
-// Route::resource('products', ProductController::class)->except(['show']);
-// Route::resource('users', UserController::class)->except(['show', 'create', 'store']);
+|--------------------------------------------------------------------------
+| ADMIN (requiere middleware 'admin' en Kernel)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(function () {
 
+    // Dashboard
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-/* =========================
-|  DIAGNÓSTICO (solo debug)
-========================= */
+    // CRUD clásicos
+    Route::resource('categories', AdminCategoryController::class)->except(['show']);
+    Route::resource('brands',     AdminBrandController::class)->except(['show']);
+    Route::resource('products',   AdminProductController::class)->except(['show']);
+    Route::resource('users',      AdminUserController::class)->except(['show']);
+});
+
+// Alias opcional (compatibilidad): /dashboard → admin.dashboard
+Route::get('/dashboard', function () {
+    return redirect()->route('admin.dashboard');
+})->middleware(['auth', 'admin'])->name('dashboard');
+
+/*
+|--------------------------------------------------------------------------
+| DIAGNÓSTICO (solo debug)
+|--------------------------------------------------------------------------
+*/
 if (config('app.debug')) {
     Route::get('/whoami', function () {
         return auth()->check()
-            ? 'OK: ' . auth()->user()->email . ' | rol=' . auth()->user()->role
+            ? 'OK: ' . auth()->user()->email . ' | rol=' . (auth()->user()->role ?? '—')
             : 'NO AUTH';
     })->middleware('auth')->name('whoami');
 }
+Route::view('/login', 'auth.login')->middleware('guest')->name('login');
+Route::view('/register', 'auth.register')->middleware('guest')->name('register');
+
+/*
+|--------------------------------------------------------------------------
+| PayU (separado del checkout demo)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('payu')->name('payu.')->group(function () {
+    Route::get('/form',          [PayUController::class, 'showForm'])->name('form');
+    Route::post('/checkout',     [PayUController::class, 'redirectToPayU'])->name('checkout');
+    Route::post('/confirmation', [PayUController::class, 'confirmation'])->name('confirmation');
+    Route::get('/response',      [PayUController::class, 'response'])->name('response');
+});
+
+Route::middleware(['auth','admin'])->prefix('admin')->name('admin.')->group(function () {
+
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    Route::resource('categories', AdminCategoryController::class)->except(['show']);
+    Route::resource('brands',     AdminBrandController::class)->except(['show']);
+    Route::resource('products',   AdminProductController::class)->except(['show']);
+    Route::resource('users',      AdminUserController::class)->except(['show']);
+
+    // === REPORTES ===
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/revenue.csv',      [ReportController::class, 'revenueCsv'])->name('revenue');
+        Route::get('/best-sellers.csv', [ReportController::class, 'bestSellersCsv'])->name('best');
+        Route::get('/products.csv',     [ReportController::class, 'productsCsv'])->name('products');
+        Route::get('/orders.csv',       [ReportController::class, 'ordersCsv'])->name('orders');
+    });
+});
+// routes/web.php
+Route::post('/logout', function (\Illuminate\Http\Request $request) {
+    \Illuminate\Support\Facades\Auth::logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+    return redirect()->route('home');
+})->middleware('auth')->name('logout');
 
 
-/* =========================
-|  Auth scaffolding (Breeze/Fortify)
-========================= */
+
+
+// Auth scaffolding (Breeze/Fortify)
 require __DIR__ . '/auth.php';
